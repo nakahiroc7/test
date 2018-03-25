@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+<style type="text/less">  
+//less 定義
+.input-type-less(@padding,@width,@height){
+	border:0;
+	padding:@padding;
+	font-size:1em;
+	font-family: Arial, sans-serif;
+	color: #aaa;
+	border:solid 1px #ccc;
+	margin:0 0 10px;
+	width: @width;
+	height: @height;
+	-moz-box-shadow: inset 1px 4px 9px -6px rgba(0,0,0,0.5);
+	-webkit-box-shadow: inset 1px 4px 9px -6px rgba(0, 0, 0, 0.5);
+	box-shadow: inset 1px 4px 9px -6px rgba(0,0,0,0.5);
+}
+
+.input-type-radio-check-less(@padding,@width,@height){
+	border:0;
+	padding:@padding;
+	font-size:1em;
+	font-family: Arial, sans-serif;
+	margin:0 0 10px;
+	width: @width;
+	height: @height;
+}
+
+	input[type="text"],[type="number"] {
+		.input-type-less(15px,100px,10px);
+	}
+	input[type="date"] {
+		.input-type-less(15px,200px,10px);
+	}
+	input[type="checkbox"],[type="radio"] {
+		.input-type-radio-check-less(15px,30px,10px);
+	}
+
+@background : #FFFFCC;
+
+body {
+	background : @background;
+	&.settei
+	{
+		background :darken(@background, 10%);
+	}
+}
+button {
+    position: relative;
+    display: inline-block;
+    padding: 0.25em 0.5em;
+    text-decoration: none;
+    color: #FFF;
+    background: #fd9535;/*背景色*/
+    border-bottom: solid 2px #d27d00;/*少し濃い目の色に*/
+    border-radius: 4px;/*角の丸み*/
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.2), 0 2px 2px rgba(0, 0, 0, 0.19);
+	font-family:Arial, sans-serif;
+	&:active{
+	    border-bottom: solid 2px #fd9535;
+	    box-shadow: 0 0 2px rgba(0, 0, 0, 0.30);
+	}
+}
+</style>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.7.3/less.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.2/knockout-min.js"></script>
+
+  <script>
+	function isNullOrUndefined(o){
+	    return (o === undefined || o === null);
+	}
+
+	var dateAdd = function(dt, dd, u) {
+		if (typeof u == 'undefined') u = 'D';
+			var y = dt.getFullYear();
+			var m = dt.getMonth();
+			var d = dt.getDate();
+			var r = new Date(y, m, d);
+		if (u == 'D') {
+			r.setDate(d + dd);
+		} else if (u == 'M') {
+			var e1 = (new Date(y, m+1, 0)).getDate();
+			m += dd;
+			y += parseInt(m/12);
+			m %= 12;
+			var e2 = (new Date(y, m+1, 0)).getDate();
+			r.setFullYear(y, m, (d == e1 || d > e2 ? e2 : d));
+		}
+		return r;
+	};
+
+	var dateDiff = function(dt1, dt2, u, f) {
+		if (typeof u == 'undefined') u = 'D';
+		if (typeof dt2 == 'undefined') dt2 = new Date;
+		if (f) dt1 = dateAdd(dt1, -1, 'D');
+		var y1 = dt1.getFullYear();
+		var m1 = dt1.getMonth();
+		var y2 = dt2.getFullYear();
+		var m2 = dt2.getMonth();
+		var dt3, r = 0;
+		if (u == 'Y') {
+			r = parseInt(dateDiff(dt1, dt2, 'M') / 12);
+		} else if (u == 'M') {
+			r = (y2 * 12 + m2) - (y1 * 12 + m1);
+			dt3 = dateAdd(dt1, r, 'M');
+			if (dateDiff(dt3, dt2, 'D') < 0) --r;
+		} else if (u == 'D') {
+			dt1 = new Date(y1, m1, dt1.getDate());
+			dt2 = new Date(y2, m2, dt2.getDate());
+			r = parseInt((dt2-dt1)/(24*3600*1000));
+		} else if (u == 'YM') {
+			r = dateDiff(dt1, dt2, 'M') % 12;
+		} else if (u == 'MD') {
+			r = dateDiff(dt1, dt2, 'M');
+			dt3 = dateAdd(dt1, r, 'M');
+			r = dateDiff(dt3, dt2, 'D');
+		} else if (u == 'YD') {
+			r = dateDiff(dt1, dt2, 'Y');
+			dt3 = dateAdd(dt1, r*12, 'M');
+			r = dateDiff(dt3, dt2, 'D');
+		}
+		return r;
+	};
+
+
+	var self ;
+	var data_baby;
+
+	function ajaxButtonPost(buttonEnable,url){
+		buttonEnable(false);
+		var defSel;
+		if(self.defaultValue() == true){
+			defSel = 1;
+		}else{
+			defSel = 0;
+		}
+		var wkBabyid;
+		//追加時
+		if(self.selectedChoice() == '追加')
+		{
+			$.ajax({
+				  type       : 'POST',
+				  dataType   : 'json',
+				  contentType: 'application/json; charset=UTF-8',
+				  url        : "api/babynextbabyid",
+				  cache: false,
+				  async: false, //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+				  data       : JSON.stringify(params)
+				}).done(function(dataRes, textStatus, jqXHR) {
+					wkBabyid = dataRes;
+				}).fail(function(jqXHR, textStatus, errorThrown) {
+				  // 失敗時
+					console.log(jqXHR);
+					console.log(textStatus);
+					console.log(errorThrown);
+					alert("Server Error. Pleasy try again later.");
+				}).always(function(jqXHR, textStatus, errorThrown) {
+				  // 成功しても失敗しても常に呼び出される
+				  // 引数は成功時と失敗時で異なる
+				});
+
+		}else
+		{
+			wkBabyid = self.selectedChoice();
+		}
+		
+		console.log(self.selectedChoice()+' ' +self.txtBirthday()+' '+defSel);
+	    var params = {babyid: wkBabyid, 
+	    		birthdate: self.txtBirthday(),
+	    		firstname: self.firstname(),
+	    		lastname: self.lastname(),
+	    		sex: self.sex(),
+	    		userid: null,
+	    		defaultselect: defSel
+	    		};
+		$.ajax({
+		  type       : 'POST',
+		  dataType   : 'json',
+		  contentType: 'application/json; charset=UTF-8',
+		  url        : url,
+		  cache: false,
+		  async: false, //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+		  data       : JSON.stringify(params)
+		}).done(function(data, textStatus, jqXHR) {
+		  // 成功時
+		  alert("success");
+		}).fail(function(jqXHR, textStatus, errorThrown) {
+		  // 失敗時
+			console.log(jqXHR);
+			console.log(textStatus);
+			console.log(errorThrown);
+			alert("Server Error. Pleasy try again later.");
+		}).always(function(jqXHR, textStatus, errorThrown) {
+		  // 成功しても失敗しても常に呼び出される
+			buttonEnable(true);
+		});
+
+		location.reload();
+	}
+
+
+	/* javascript */
+	window.onload = function() {
+	    var ViewModel = function() {
+	    	self = this;
+	    	this.saveEnable = ko.observable(true);
+	    	this.delEnable = ko.observable(true);
+	    	
+			$.ajax({
+			    type: 'GET',
+			    url: 'api/babylist',
+			    dataType: 'json',
+			    cache: false,
+			    async: false, // 非同期オプションを無効にして同期リクエストを行う *1
+			    success: function( data ) {
+			        data_baby = data;
+			    }
+			    // *1 同期リクエストは処理が終わるまでブラウザをロックしてしまいます。
+			});
+		    this.choices =  ko.observableArray();
+			this.choices.push('追加');
+			for (var i = 0; i < data_baby.length; i++) {
+				this.choices.push(data_baby[i].babyid);
+			}
+			if(data_baby.length > 0)
+			{
+			    this.selectedChoice = ko.observable(data_baby[0].babyid);
+		        this.firstname = ko.observable(data_baby[0].firstname);
+		        this.lastname = ko.observable(data_baby[0].lastname);
+		        this.txtBirthday = ko.observable(data_baby[0].birthdate);
+		        this.sex = ko.observable(data_baby[0].sex)
+	            this.defaultValue = ko.observable(data_baby[0].defaultselect );
+			}else{
+			    this.selectedChoice = ko.observable('追加');
+		        this.firstname = ko.observable();
+		        this.lastname = ko.observable();
+		        this.txtBirthday = ko.observable();
+		        this.sex = ko.observable()
+	            this.defaultValue = ko.observable(false);
+			}
+	        this.age = ko.computed(function() {
+	        	console.log("this.age computed"+this.txtBirthday());
+	        	if (isNullOrUndefined(this.txtBirthday())){
+					return "";
+	        	}
+	        	else
+	        	{
+	        		var now = new Date();
+	        		var strBirthday = this.txtBirthday();
+	        		strBirthday.replace(/-/g, '/');
+	        		var dateBirthday = new Date(Date.parse(strBirthday));
+//	        		console.log(dateBirthday);
+//	        		console.log(now);
+//		        	console.log("calc"+dateDiff(dateBirthday,now,'M',true) );
+		            return ' ' + dateDiff(dateBirthday,now,'M',true) + ' か月';
+	        	}
+	        }, this);
+
+	        this.seimei = ko.computed(function() {
+	        	if (isNullOrUndefined(this.firstname()) || isNullOrUndefined(this.lastname())){
+		            return "";
+	        	}
+	        	else
+	        	{
+		            return this.lastname() + ' '  + this.firstname() ;
+	        	}
+	        }, this);
+	        this.save = function() {
+				//ajax通信
+				ajaxButtonPost(this.saveEnable,'api/babyinsupd');
+	        	console.log(this.firstname() + ' ' + this.lastname() + ' ' + this.sex() + ' ' + this.txtBirthday());
+				//追加の場合 babyidのmax取得
+	        };
+	        this.del = function() {
+				//ajax通信
+				ajaxButtonPost(this.delEnable,'api/babydel');
+				console.log(this.firstname() + ' ' + this.lastname() + ' ' + this.sex() + ' ' + this.txtBirthday());
+	        };
+	    };
+
+	    var viewModel = new ViewModel();
+	    viewModel.selectedChoice.subscribe(function(newValue) {
+		    console.log("the new value is " + newValue); 
+	    	if(newValue != '追加')
+    		{
+				var params = {babyid: newValue};
+				$.ajax({
+				  type       : 'POST',
+				  dataType   : 'json',
+				  contentType: 'application/json; charset=UTF-8',
+				  url        : "api/babyget",
+				  cache: false,
+				  async: false, //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+				  data       : JSON.stringify(params)
+				}).done(function(dataRes, textStatus, jqXHR) {
+					data_baby = dataRes;
+					console.log(data_baby);
+				}).fail(function(jqXHR, textStatus, errorThrown) {
+				  // 失敗時
+					console.log(jqXHR);
+					console.log(textStatus);
+					console.log(errorThrown);
+					alert("Server Error. Pleasy try again later.");
+				}).always(function(jqXHR, textStatus, errorThrown) {
+				  // 成功しても失敗しても常に呼び出される
+				  // 引数は成功時と失敗時で異なる
+				});
+		        self.firstname(data_baby.firstname);
+		        self.lastname(data_baby.lastname);
+		        self.txtBirthday(data_baby.birthdate);
+		        self.sex(data_baby.sex);
+		        if(data_baby.defaultselect == 1)
+	        	{
+			        self.defaultValue(true);
+	        	}else
+        		{
+			        self.defaultValue(false);
+        		}
+    		}else{
+		        self.firstname('');
+		        self.lastname('');
+		        self.txtBirthday(null);
+		        self.sex(1);
+		        self.defaultValue(false);
+    		}
+	    });
+	    ko.applyBindings(viewModel);
+	};
+</script>
+</head>
+<body class="settei">
+<form>
+<label>赤ちゃん選択<select data-bind="options: choices, value: selectedChoice"></select></label>
+<br>
+<label>姓<input type="text" data-bind="value: lastname"></label>
+<label>名<input type="text" data-bind="value: firstname"></label>
+<span data-bind="text:seimei"></span>
+<br>
+<label>性別
+<input type="radio" data-bind="checked: sex" value="1" checked="checked">男
+<input type="radio" data-bind="checked: sex" value="2">女
+</label>
+<br>
+<label>生年月日<input type="date" data-bind="value:txtBirthday"></label><label>生後<span data-bind="text:age"></span></label>
+<br>
+<label>デフォルト表示にする<input type="checkbox" data-bind="checked: defaultValue" /></label>
+<button data-bind="click: save, enable: saveEnable">保存</button>
+<button data-bind="click: del, enable: delEnable">削除</button>
+<br>
+</form>
+</body>
+</html>

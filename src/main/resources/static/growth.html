@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <!-- Datatables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/v/dt/dt-1.10.16/datatables.min.css" >
+  <link rel="stylesheet/less" type="text/css" href="styles.less">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.7.3/less.js"></script>
+  <script src="https://cdn.datatables.net/v/dt/dt-1.10.16/datatables.min.js"></script>
+  <script src="https://cdn.datatables.net/select/1.2.3/js/dataTables.select.min.js"></script>
+  <script>
+    /* javascript */
+
+	function ajaxButtonPost(button,url){
+	    button.attr("disabled", true);
+		//todo babyid 0固定
+		console.log("hidebabyid:"+$('input:hidden[name="hidebabyid"]').val());
+	    var params = {babyid : $('input:hidden[name="hidebabyid"]').val(),recordingdate: $('#recordingdate').val(), height: $('#height').val(), weight: $('#weight').val()};
+		$.ajax({
+		  type       : 'POST',
+		  dataType   : 'json',
+		  contentType: 'application/json; charset=UTF-8',
+		  url        : url,
+		  data       : JSON.stringify(params)
+		}).done(function(data, textStatus, jqXHR) {
+		  // 成功時
+		  alert("success");
+		}).fail(function(jqXHR, textStatus, errorThrown) {
+		  // 失敗時
+			console.log(jqXHR);
+			console.log(textStatus);
+			console.log(errorThrown);
+			alert("Server Error. Pleasy try again later.");
+		}).always(function(jqXHR, textStatus, errorThrown) {
+		  // 成功しても失敗しても常に呼び出される
+		  // 引数は成功時と失敗時で異なる
+			button.attr("disabled", false);
+		});
+    	
+    }
+
+	function ajaxCountBabyGrowth(){
+		var params = {babyid : $('input:hidden[name="hidebabyid"]').val(),recordingdate: $('#recordingdate').val()};
+		var dataLength;
+		$.ajax({
+		  type       : 'POST',
+		  dataType   : 'json',
+		  contentType: 'application/json; charset=UTF-8',
+		  url        : "api/babygrowthget",
+		  cache: false,
+		  async: false, //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+		  data       : JSON.stringify(params)
+		}).done(function(dataRes, textStatus, jqXHR) {
+			dataLength = dataRes.length;
+			console.log(dataLength);
+		}).fail(function(jqXHR, textStatus, errorThrown) {
+		  // 失敗時
+			console.log(jqXHR);
+			console.log(textStatus);
+			console.log(errorThrown);
+			alert("Server Error. Pleasy try again later.");
+		}).always(function(jqXHR, textStatus, errorThrown) {
+		  // 成功しても失敗しても常に呼び出される
+		  // 引数は成功時と失敗時で異なる
+		});
+		return dataLength;
+
+	}
+
+	function ajaxBabyidByDefaultSelect(){
+		var params;
+		var wkBabyid;
+		$.ajax({
+		  type       : 'POST',
+		  dataType   : 'json',
+		  contentType: 'application/json; charset=UTF-8',
+		  url        : "api/babybabyidfromdefaultselect",
+		  cache: false,
+		  async: false, //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+		  data       : JSON.stringify(params)
+		}).done(function(dataRes, textStatus, jqXHR) {
+			wkBabyid = dataRes;
+			console.log(wkBabyid);
+		}).fail(function(jqXHR, textStatus, errorThrown) {
+		  // 失敗時
+			console.log(jqXHR);
+			console.log(textStatus);
+			console.log(errorThrown);
+			alert("Server Error. Pleasy try again later.");
+		}).always(function(jqXHR, textStatus, errorThrown) {
+		  // 成功しても失敗しても常に呼び出される
+		  // 引数は成功時と失敗時で異なる
+		});
+		return wkBabyid;
+
+	}
+
+	
+	$(document).ready(function() {
+		console.log('datatable load');
+		var wkBabyid = ajaxBabyidByDefaultSelect();
+		$('input:hidden[name="hidebabyid"]').val(wkBabyid);
+		
+		//Datatables設定
+	    var table = $('#example').DataTable({
+	        // Ajaxの接続先を設定します。
+	        ajax: {url : 'api/babygrowthlist' ,dataSrc: ''},
+		    columns: [
+		        { data: "recordingdate" },
+		        { data: "height" },
+		        { data: "weight" }
+		    ],
+		    select : true,
+		    "order": [[ 0, "desc" ]]
+	    });
+	    var counter = 1;
+		//Datatables 行クリック
+		$('#example tbody').on("click", "tr", function(){
+		    var data = $('#example').dataTable().fnGetData(this);
+		    $('#recordingdate').val(data['recordingdate']);
+		    $('#height').val(data['height']);
+		    $('#weight').val(data['weight']);
+		});
+	
+		//追加クリック
+		$('#insRow').on( 'click', function () {
+			//データ存在チェックajax すでにデータがある場合はエラー
+			var dataCnt = ajaxCountBabyGrowth();
+			console.log(dataCnt);
+			if (dataCnt > 0 ) 
+			{
+				alert("この日付はすでにデータが存在します");
+				return ;
+			}
+			
+			//ajax通信
+			ajaxButtonPost($(this),'api/babygrowthinsupd');
+			table.row.add({
+				recordingdate: $('#recordingdate').val(),
+				height: $('#height').val(),
+				weight: $('#weight').val()
+			}).draw( false );
+		} );
+
+		$('#updRow').on( 'click', function () {
+			//行選択チェック
+			if (table.row('.selected').count() == 1)
+			{
+				table.row('.selected').remove().draw( false );
+			}
+			else
+			{
+				return;
+			}
+			ajaxButtonPost($(this),'api/babygrowthinsupd');
+			console.log("table reload");
+			table.row('.selected').remove().draw( false );
+			table.row.add({
+				recordingdate: $('#recordingdate').val(),
+				height: $('#height').val(),
+				weight: $('#weight').val()
+			}).draw( false );
+		} );
+	    $('#delRow').click( function () {
+			ajaxButtonPost($(this),'api/babygrowthdel');
+
+			table.row('.selected').remove().draw( false );
+	        $('#recordingdate').val('');
+	        $('#height').val('');
+	        $('#weight').val('');
+	    } );
+	} );
+
+
+
+
+</script>
+</head>
+<body>
+<input type="hidden" name="hidebabyid" value="">
+<label>日付<input type="date" id="recordingdate"></label>
+<br>
+<label>身長(cm)<input type="number" step="0.1" max="999" min="0" id="height"></label>
+<br>
+<label>体重(g)<input type="number" step="1" max="99999" min="0" id="weight"></label>
+<br>
+<button id="insRow">追加</button>
+<br>
+<label>更新削除する場合は一覧から行を選択してください</label>
+<br>
+<button id="updRow">更新</button>
+<button id="delRow">削除</button>
+<table id="example" class="display" cellspacing="0" align="left">
+        <thead>
+            <tr>
+                <th width="150">日付</th>
+                <th width="50">身長(cm)</th>
+                <th width="50">体重(g)</th>
+            </tr>
+        </thead>
+    </table>
+</body>
+</html>

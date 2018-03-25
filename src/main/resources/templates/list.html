@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org/">    <!-- a -->
+<head>
+  <meta charset="UTF-8"/>
+  <title>顧客一覧</title>
+  <style type="text/css">
+    .list th {
+      background-color: #cccccc;
+      padding: 5px;
+    }
+    .list td {
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <table class="list">
+    <tr>
+      <th>ID</th>
+      <th>氏名</th>
+    </tr>
+    <tr th:each="sample:${samples}">    <!-- b -->
+      <td th:text="${sample.id}">xx</td>    <!-- c -->
+      <td th:text="${sample.name}">name</td>    <!-- d -->
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.3.0/Chart.bundle.min.js"></script>
+<script>
+
+	var result;
+	$(document).ready(function() {
+		console.log('datatable load');
+		$.ajax({
+			  type       : 'GET',
+			  dataType   : 'json',
+			  contentType: 'application/json; charset=UTF-8',
+			  url        : "api/babygrowthlist",
+			  cache: false,
+			  async: false //ajaxの戻り値を使いたい　ブラウザが止まるので止めろとネットにあるが、一番良い方法に思えるのでこれにする
+			}).done(function(dataRes, textStatus, jqXHR) {
+				result = dataRes;
+			}).fail(function(jqXHR, textStatus, errorThrown) {
+			  // 失敗時
+				console.log(jqXHR);
+				console.log(textStatus);
+				console.log(errorThrown);
+				alert("Server Error. Pleasy try again later.");
+			}).always(function(jqXHR, textStatus, errorThrown) {
+			  // 成功しても失敗しても常に呼び出される
+			  // 引数は成功時と失敗時で異なる
+			});
+		console.log(result.length);
+	    var labelsArr = [];
+	    var heightArr = [];
+	    var weightArr = [];
+	    var kaupArr = [];
+/* Chart動作確認用のテストコード
+	    labelsArr.push('8/26');labelsArr.push('8/27');labelsArr.push('8/28');labelsArr.push('8/26');labelsArr.push('8/31');
+	    heightArr.push('40');heightArr.push('45');heightArr.push('50');heightArr.push('55');heightArr.push('60');
+	    weightArr.push('2020');weightArr.push('3000');weightArr.push('4000');weightArr.push('4200');weightArr.push('4300');
+	//    kaupArr.push('15.3');kaupArr.push('15.3');kaupArr.push('16.2');kaupArr.push('16.2');kaupArr.push('16.2');
+*/
+		for(var i in result) {
+			console.log(result[i]['recordingdate']);
+			labelsArr.push(result[i]['recordingdate'])
+			heightArr.push(result[i]['height']);
+			weightArr.push(result[i]['weight']);
+			var dHeight = parseFloat(result[i]['height']);
+			var dWeightKg = parseFloat(result[i]['weight']) / 1000;
+			var dKaup = dWeightKg / dHeight / dHeight * 10000;
+			dKaup = dKaup * 100;
+			dKaup = Math.floor(dKaup);
+			dKaup = dKaup / 100;
+			kaupArr.push(dKaup);
+			console.log (dHeight);
+			console.log (dWeightKg);
+			console.log (dKaup);
+		}
+
+	    var barChartData = {
+	    	    labels: labelsArr,
+	    	    datasets: [
+	    	    {
+	    	    	type: 'line', // 追加
+	    	        label: 'weight',
+	    	        data: weightArr,
+	    	        borderColor : "rgba(254,97,132,0.8)",
+	    	        // 削除 backgroundColor   : "rgba(254,97,132,0.5)",
+	    	        pointBackgroundColor    : "rgba(254,97,132,0.8)", // 追加
+	    	        fill: false, // 追加
+	    	        yAxisID: "y-axis-1", // 追加
+	    	    },
+	    	    {
+	    	    	type: 'line', // 追加
+	    	        label: 'height',
+	    	        data: heightArr,
+	    	        borderColor : "rgba(54,164,235,0.8)",
+	    	        //backgroundColor : "rgba(54,164,235,0.5)",
+	    	        fill: false, // 追加
+	    	        yAxisID: "y-axis-2", // 追加
+	    	    },
+	    	    {
+	    	    	type: 'line', // 追加
+	    	        label: 'kaup',
+	    	        data: kaupArr,
+	    	        borderColor : "rgba(80,250,157,0.8)",
+	    	        //backgroundColor : "rgba(80,250,157,0.5)",
+	    	        fill: false, // 追加
+	    	        yAxisID: "y-axis-3", // 追加
+	    	    },
+	    	    
+	    	    ],
+	    	};
+	    	var complexChartOption = {
+	    	    responsive: true,
+	    		scales: {
+	    		        yAxes: [{
+	    		            id: "y-axis-1",   // Y軸のID
+	    		            type: "linear",   // linear固定 
+	    		            position: "left", // どちら側に表示される軸か？
+	    	                scaleLabel: {              //軸ラベル設定
+	    	                   display: true,          //表示設定
+	    	                   labelString: 'weight(g)',  //ラベル
+	    	                   fontSize: 12               //フォントサイズ
+	    	                },
+	    		            ticks: {          // スケール
+	    		                max: 10000,
+	    		                min: 0,
+	    		                stepSize: 1000
+	    		            },
+	    		        }, {
+	    		            id: "y-axis-2",
+	    		            type: "linear", 
+	    		            position: "right",
+	    	                scaleLabel: {              //軸ラベル設定
+	    	                   display: true,          //表示設定
+	    	                   labelString: 'height(cm)',  //ラベル
+	    	                   fontSize: 12               //フォントサイズ
+	    	                },
+	    		            ticks: {
+	    		                max: 100,
+	    		                min: 0,
+	    		                stepSize: 10
+	    		            },
+	    		        }, {
+	    		            id: "y-axis-3",
+	    		            type: "linear", 
+	    		            position: "right",
+	    	                scaleLabel: {              //軸ラベル設定
+	    	                   display: true,          //表示設定
+	    	                   labelString: 'kaup',  //ラベル
+	    	                   fontSize: 12               //フォントサイズ
+	    	                },
+	    		            ticks: {
+	    		                max: 20,
+	    		                min: 0,
+	    		                stepSize: 2
+	    		            },
+	    		        }],
+	    		}
+	    	};
+		    ctx = document.getElementById("canvas").getContext("2d");
+		    window.myBar = new Chart(ctx, {
+		        type: 'bar',
+		        data: barChartData,
+		        options: complexChartOption
+		    });
+	});
+
+	window.onload = function() {
+	};
+
+</script>
+</head>
+<body>
+<div class="container" style="width:100%">
+    <canvas id="canvas"></canvas>
+</div>
+</body>
+</html>
